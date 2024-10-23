@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Empleados STORM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #000000;
+            background-image: none;
+        }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 bg-gray-900 bg-opacity-90 rounded-lg shadow-xl">
+        <img  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/STORM-ZMF6fRHkg5pb7n5HIipLn95AFNPQt9.png" alt="STORM Logo" class="mx-auto mb-6 w-32 filter drop-shadow-lg">
+        <h1 class="text-3xl font-bold text-center mb-6">Control de Empleados STORM</h1>
+        <p class="text-center text-gray-400 mb-8">Empresa de Producción y Distribución</p>
+        
+        <div class="mb-4">
+            <input type="text" id="searchInput" placeholder="Buscar empleado..." class="w-full px-4 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
+        </div>
+
+        <div class="overflow-x-auto bg-gray-800 rounded-lg shadow">
+            <table id="employeeTable" class="min-w-full divide-y divide-gray-700">
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nombre</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Apellido</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Teléfono</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Puesto</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Departamento</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Sueldo Actual</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha de Pago</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Fecha de Registro</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Estado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-gray-800 divide-y divide-gray-700">
+                    <!-- Los datos de los empleados se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+        <button id="logoutBtn" class="mt-4 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+            Cerrar Sesión
+        </button>
+        <a href="registro-empleados.html" class="block mt-4 text-center text-blue-400 hover:text-blue-300">Volver a Registro de Empleados</a>
+        <a href="index.html" class="block mt-2 text-center text-blue-400 hover:text-blue-300">Volver al Inicio</a>
+    </div>
+
+    <script>
+        if (!localStorage.getItem('ceoAuthenticated')) {
+            window.location.href = 'login-ceo.html';
+        }
+
+        let empleados = JSON.parse(localStorage.getItem('empleados')) || [];
+
+        function populateTable(empleados) {
+            const tableBody = document.querySelector("#employeeTable tbody");
+            tableBody.innerHTML = "";
+            empleados.forEach(empleado => {
+                const row = document.createElement("tr");
+                row.className = "hover:bg-gray-700";
+                Object.keys(empleado).forEach(key => {
+                    if (key !== 'estado') {
+                        const cell = document.createElement("td");
+                        cell.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-300";
+                        cell.textContent = empleado[key];
+                        row.appendChild(cell);
+                    }
+                });
+        
+                // Celda de estado con indicador de color
+                const estadoCell = document.createElement("td");
+                estadoCell.className = "px-6 py-4 whitespace-nowrap text-sm";
+                const estadoIndicator = document.createElement("span");
+                estadoIndicator.className = `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(empleado.estado)}`;
+                estadoIndicator.textContent = empleado.estado;
+                estadoCell.appendChild(estadoIndicator);
+                row.appendChild(estadoCell);
+        
+                // Añadir botones de acción
+                const actionCell = document.createElement("td");
+                actionCell.className = "px-6 py-4 whitespace-nowrap text-sm font-medium";
+        
+                const editBtn = createButton("Editar", "bg-yellow-600 hover:bg-yellow-700", () => editarEmpleado(empleado.email));
+                const contratarBtn = createButton("Contratar", "bg-green-600 hover:bg-green-700", () => cambiarEstado(empleado.email, 'Contratado'));
+                const pruebaBtn = createButton("Poner a Prueba", "bg-blue-600 hover:bg-blue-700", () => cambiarEstado(empleado.email, 'Prueba'));
+                const despedirBtn = createButton("Despedir", "bg-red-600 hover:bg-red-700", () => cambiarEstado(empleado.email, 'Despedido'));
+
+                actionCell.appendChild(editBtn);
+                actionCell.appendChild(contratarBtn);
+                actionCell.appendChild(pruebaBtn);
+                actionCell.appendChild(despedirBtn);
+
+                row.appendChild(actionCell);
+                tableBody.appendChild(row);
+            });
+        }
+
+        function createButton(text, colorClass, onClick) {
+            const button = document.createElement("button");
+            button.textContent = text;
+            button.className = `${colorClass} text-white px-2 py-1 rounded text-xs mr-2 mb-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white`;
+            button.onclick = onClick;
+            return button;
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Contratado': return 'bg-green-100 text-green-800';
+                case 'Prueba': return 'bg-blue-100 text-blue-800';
+                case 'Despedido': return 'bg-red-100 text-red-800';
+                case 'Pendiente': return 'bg-yellow-100 text-yellow-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function cambiarEstado(email, nuevoEstado) {
+            empleados = empleados.map(emp => {
+                if (emp.email === email) {
+                    emp.estado = nuevoEstado;
+                }
+                return emp;
+            });
+            localStorage.setItem('empleados', JSON.stringify(empleados));
+            populateTable(empleados);
+        }
+
+        function editarEmpleado(email) {
+            const empleado = empleados.find(emp => emp.email === email);
+            if (empleado) {
+                const nuevoPuesto = prompt("Nuevo puesto:", empleado.puesto);
+                const nuevoSueldo = prompt("Nuevo sueldo:", empleado.sueldoActual);
+                const nuevaFechaPago = prompt("Nueva fecha de pago (YYYY-MM-DD):", empleado.fechaPago);
+
+                if (nuevoPuesto !== null) empleado.puesto = nuevoPuesto;
+                if (nuevoSueldo !== null) empleado.sueldoActual = parseFloat(nuevoSueldo);
+                if (nuevaFechaPago !== null) empleado.fechaPago = nuevaFechaPago;
+
+                localStorage.setItem('empleados', JSON.stringify(empleados));
+                populateTable(empleados);
+            }
+        }
+
+        populateTable(empleados);
+
+        document.getElementById("searchInput").addEventListener("input", function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredEmpleados = empleados.filter(empleado => 
+                Object.values(empleado).some(value => 
+                    value.toString().toLowerCase().includes(searchTerm)
+                )
+            );
+            populateTable(filteredEmpleados);
+        });
+
+        document.getElementById("logoutBtn").addEventListener("click", function() {
+            localStorage.removeItem('ceoAuthenticated');
+            window.location.href = 'login-ceo.html';
+        });
+    </script>
+</body>
+</html>
